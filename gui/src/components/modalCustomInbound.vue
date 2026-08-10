@@ -30,6 +30,10 @@
           </span>
           <span v-else class="is-size-7 has-text-grey">—</span>
         </b-table-column>
+        <b-table-column v-slot="props" :label="$t('customInbound.username')" width="80">
+          <code v-if="props.row.username" class="is-size-7">{{ props.row.username }}</code>
+          <span v-else class="is-size-7 has-text-grey">—</span>
+        </b-table-column>
         <b-table-column v-slot="props" :label="$t('operations.name')" width="60">
           <b-button
             size="is-small"
@@ -71,6 +75,24 @@
               max="65535"
               style="width: 100px"
               :placeholder="$t('customInbound.portPlaceholder')"
+            ></b-input>
+          </b-field>
+        </b-field>
+
+        <!-- Optional authentication (SOCKS/HTTP user/pass) -->
+        <b-field grouped group-multiline>
+          <b-field :label="$t('customInbound.username')" expanded label-position="on-border">
+            <b-input
+              v-model="form.username"
+              :placeholder="$t('customInbound.usernamePlaceholder')"
+            ></b-input>
+          </b-field>
+          <b-field :label="$t('customInbound.password')" expanded label-position="on-border">
+            <b-input
+              v-model="form.password"
+              type="password"
+              :placeholder="$t('customInbound.passwordPlaceholder')"
+              password-reveal
             ></b-input>
           </b-field>
         </b-field>
@@ -134,6 +156,8 @@ export default {
       tag: "",
       protocol: "socks",
       port: "",
+      username: "",
+      password: "",
       outbound: "",
       outboundType: "direct",
       routingARules: "",
@@ -186,6 +210,8 @@ export default {
           tag: this.form.tag.trim(),
           protocol: this.form.protocol,
           port: Number(this.form.port),
+          username: this.form.username.trim(),
+          password: this.form.password,
           outbound: this.form.outbound,
           outboundType: this.form.outboundType,
           routingARules: this.form.outboundType === "routingA" ? this.form.routingARules : "",
@@ -194,7 +220,7 @@ export default {
         .then((res) => {
           handleResponse(res, this, () => {
             this.inbounds = res.data.data.inbounds || [];
-            this.form = { tag: "", protocol: "socks", port: "", outbound: "", outboundType: "direct", routingARules: "" };
+            this.form = { tag: "", protocol: "socks", port: "", username: "", password: "", outbound: "", outboundType: "direct", routingARules: "" };
           });
         })
         .finally(() => {
