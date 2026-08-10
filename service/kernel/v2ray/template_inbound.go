@@ -218,6 +218,15 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 		}
 		if ci.Protocol == "socks" {
 			ib.Settings = &coreObj.InboundSettings{UDP: true}
+		} else {
+			ib.Settings = &coreObj.InboundSettings{}
+		}
+		// Enable username/password authentication if provided
+		if ci.Username != "" && ci.Password != "" {
+			ib.Settings.Auth = "password"
+			ib.Settings.Accounts = []coreObj.Account{
+				{User: ci.Username, Pass: ci.Password},
+			}
 		}
 		t.Inbounds = append(t.Inbounds, ib)
 

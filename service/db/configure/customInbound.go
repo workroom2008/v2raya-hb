@@ -12,9 +12,11 @@ type CustomInbound struct {
 	Tag           string `json:"tag"`
 	Protocol      string `json:"protocol"` // "socks" or "http"
 	Port          int    `json:"port"`
-	Outbound      string `json:"outbound"`      // bound outbound group name
-	OutboundType  string `json:"outboundType"`  // "direct" or "routingA"
-	RoutingARules string `json:"routingARules"` // RoutingA rules text (when outboundType="routingA")
+	Username      string `json:"username,omitempty"` // optional, SOCKS/HTTP auth username
+	Password      string `json:"password,omitempty"` // optional, SOCKS/HTTP auth password
+	Outbound      string `json:"outbound"`           // bound outbound group name
+	OutboundType  string `json:"outboundType"`       // "direct" or "routingA"
+	RoutingARules string `json:"routingARules"`      // RoutingA rules text (when outboundType="routingA")
 }
 
 // GetCustomInbounds returns all custom inbound configs stored in DB.
