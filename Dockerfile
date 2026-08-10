@@ -24,7 +24,7 @@ COPY service/ ./
 COPY --from=frontend /build/web ./server/router/web
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -tags "with_gvisor" \
-    -ldflags "-X github.com/v2rayA/v2rayA/conf.Version=fix-ui -s -w" \
+    -ldflags "-X github.com/v2rayA/v2rayA/conf.Version=2.4.10 -s -w" \
     -o /v2raya
 
 # Stage 3: Final image - replace v2raya binary in official image
