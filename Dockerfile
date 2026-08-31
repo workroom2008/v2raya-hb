@@ -1,8 +1,6 @@
 # ============================================================
 # Multi-stage Dockerfile for v2rayA with fixed custom inbound UI
-# Bug: modalCustomInbound.vue fetchOutbounds() used /outbound (singular)
-#      instead of /outbounds (plural), causing empty dropdown
-# Fix:  https://github.com/v2rayA/v2rayA/discussions/1907
+# Uses official v2rayA prebuilt core (v2raya_core)
 # ============================================================
 
 # Stage 1: Build frontend (Vue/Vite)
@@ -14,7 +12,7 @@ COPY gui/ ./
 RUN OUTPUT_DIR=/build/web yarn build
 
 # Stage 2: Build Go binary with embedded frontend
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS backend
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS backend
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 WORKDIR /build/service
@@ -29,28 +27,24 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 
 # Stage 3: Final image
 FROM alpine:latest
+ARG TARGETARCH=amd64
 
-# Install dependencies
-RUN apk add --no-cache iptables iptables-legacy nftables tzdata wget
+RUN apk add --no-cache iptables iptables-legacy nftables tzdata wget ca-certificates
 
-# Copy v2raya binary from backend stage
 COPY --from=backend /v2raya /usr/bin/v2raya
 
 # Download v2raya_core from official v2rayA releases
-ARG TARGETARCH=amd64
 RUN V2RAYA_VERSION="2.4.16" && \
     case "${TARGETARCH}" in \
-      amd64)  V2RAYA_ARCH="x64" ;; \
-      arm64)  V2RAYA_ARCH="arm64" ;; \
-      arm/v7) V2RAYA_ARCH="armv7" ;; \
-      riscv64) V2RAYA_ARCH="riscv64" ;; \
+      amd64|arm64)  V2RAYA_ARCH="${TARGETARCH}" ;; \
+      arm/v7)       V2RAYA_ARCH="armv7" ;; \
+      riscv64)      V2RAYA_ARCH="riscv64" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
     esac && \
-    wget -O /usr/bin/v2raya_core \
+    wget -q -O /usr/bin/v2raya_core \
       "https://github.com/v2rayA/v2rayA/releases/download/v${V2RAYA_VERSION}/v2raya_core_linux_${V2RAYA_ARCH}_${V2RAYA_VERSION}" && \
     chmod +x /usr/bin/v2raya_core
 
-# Copy iptables helper scripts
 COPY install/docker/iptables.sh /usr/local/bin/iptables
 COPY install/docker/ip6tables.sh /usr/local/bin/ip6tables
 RUN ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-nft && \
@@ -58,11 +52,10 @@ RUN ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-nft && \
     ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-legacy && \
     ln -sf /usr/local/bin/ip6tables /usr/local/bin/ip6tables-legacy
 
-# Download geo data files from v2rayA official repository
 RUN mkdir -p /usr/share/v2raya && \
-    wget -O /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
-    wget -O /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
-    wget -O /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat
+    wget -q -O /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
+    wget -q -O /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
+    wget -q -O /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat
 
 EXPOSE 2017
 VOLUME /etc/v2raya
