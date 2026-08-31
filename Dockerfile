@@ -41,7 +41,7 @@ RUN V2RAYA_VERSION="2.4.16" && \
       riscv64)      V2RAYA_ARCH="riscv64" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
     esac && \
-    wget -q -O /usr/bin/v2raya_core \
+    wget -q -L -O /usr/bin/v2raya_core \
       "https://github.com/v2rayA/v2rayA/releases/download/v${V2RAYA_VERSION}/v2raya_core_linux_${V2RAYA_ARCH}_${V2RAYA_VERSION}" && \
     chmod +x /usr/bin/v2raya_core
 
