@@ -12,7 +12,7 @@ COPY gui/ ./
 RUN OUTPUT_DIR=/build/web yarn build
 
 # Stage 2: Build Go binary with embedded frontend
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS backend
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS backend
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 WORKDIR /build/service
