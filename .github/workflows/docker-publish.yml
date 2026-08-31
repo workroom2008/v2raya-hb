@@ -38,7 +38,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya
+          images: ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya-hb
           tags: |
             type=ref,event=branch
             type=sha,prefix=
@@ -51,8 +51,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya:latest
-            ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya:${{ github.sha }}
+            ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya-hb:latest
+            ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya-hb:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -60,11 +60,11 @@ jobs:
         run: |
           echo "## Docker Image Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image:** ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya-hb" >> $GITHUB_STEP_SUMMARY
           echo "- **Tags:** latest, ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Pull the image:" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya-hb:latest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
