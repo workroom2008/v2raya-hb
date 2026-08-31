@@ -27,23 +27,28 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 
 # Stage 3: Final image
 FROM alpine:latest
-ARG TARGETARCH=amd64
 
-RUN apk add --no-cache iptables iptables-legacy nftables tzdata wget ca-certificates
+RUN apk add --no-cache iptables iptables-legacy nftables tzdata curl ca-certificates
 
 COPY --from=backend /v2raya /usr/bin/v2raya
 
 # Download v2raya_core from official v2rayA releases
-RUN V2RAYA_VERSION="2.4.16" && \
+# TARGETARCH is automatically available from BuildKit
+ARG TARGETARCH
+RUN echo "Target arch: ${TARGETARCH}" && \
+    V2RAYA_VERSION="2.4.16" && \
     case "${TARGETARCH}" in \
-      amd64|arm64)  V2RAYA_ARCH="${TARGETARCH}" ;; \
-      arm/v7)       V2RAYA_ARCH="armv7" ;; \
-      riscv64)      V2RAYA_ARCH="riscv64" ;; \
+      amd64)  V2RAYA_ARCH="x64" ;; \
+      arm64)  V2RAYA_ARCH="arm64" ;; \
+      arm/v7) V2RAYA_ARCH="armv7" ;; \
+      riscv64) V2RAYA_ARCH="riscv64" ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
     esac && \
-    wget -q -L -O /usr/bin/v2raya_core \
+    echo "Downloading v2raya_core_linux_${V2RAYA_ARCH}_${V2RAYA_VERSION}..." && \
+    curl -fsSL -o /usr/bin/v2raya_core \
       "https://github.com/v2rayA/v2rayA/releases/download/v${V2RAYA_VERSION}/v2raya_core_linux_${V2RAYA_ARCH}_${V2RAYA_VERSION}" && \
-    chmod +x /usr/bin/v2raya_core
+    chmod +x /usr/bin/v2raya_core && \
+    echo "v2raya_core downloaded successfully"
 
 COPY install/docker/iptables.sh /usr/local/bin/iptables
 COPY install/docker/ip6tables.sh /usr/local/bin/ip6tables
@@ -53,9 +58,9 @@ RUN ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-nft && \
     ln -sf /usr/local/bin/ip6tables /usr/local/bin/ip6tables-legacy
 
 RUN mkdir -p /usr/share/v2raya && \
-    wget -q -O /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
-    wget -q -O /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
-    wget -q -O /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat
+    curl -fsSL -o /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
+    curl -fsSL -o /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
+    curl -fsSL -o /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat
 
 EXPOSE 2017
 VOLUME /etc/v2raya
