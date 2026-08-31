@@ -1,0 +1,79 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # 每天 UTC 02:00 自动检查上游更新（北京时间 10:00）
+    - cron: '0 2 * * *'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch upstream
+        run: git fetch upstream
+
+      - name: Check for new commits
+        id: check
+        run: |
+          # 检查上游 main 是否有新的提交
+          LOCAL_MAIN=$(git rev-parse HEAD)
+          UPSTREAM_MAIN=$(git rev-parse upstream/main)
+          
+          if [ "$LOCAL_MAIN" = "$UPSTREAM_MAIN" ]; then
+            echo "up_to_date=true" >> $GITHUB_OUTPUT
+            echo "Already up to date with upstream."
+          else
+            echo "up_to_date=false" >> $GITHUB_OUTPUT
+            echo "New commits available from upstream."
+            # 获取差异提交数量
+            COMMITS_BEHIND=$(git rev-list HEAD..upstream/main --count)
+            echo "Commits behind: $COMMITS_BEHIND"
+          fi
+
+      - name: Merge upstream changes
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          # 配置 git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 创建临时分支用于合并
+          git checkout -b temp-sync upstream/main
+          
+          # 尝试合并当前 main 分支
+          git merge main --no-edit || {
+            echo "Merge conflict detected. Attempting to resolve..."
+            # 这里可以添加自动解决冲突的逻辑
+            # 或者创建一个 issue 通知用户
+            git merge --abort
+            exit 1
+          }
+          
+          # 切换回 main 分支并合并
+          git checkout main
+          git merge temp-sync --no-edit
+          
+          # 删除临时分支
+          git branch -d temp-sync
+
+      - name: Push changes
+        if: steps.check.outputs.up_to_date == 'false'
+        run: git push origin main
+
+      - name: Create sync summary
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          echo "## Upstream Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Synced at:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upstream commits merged:** $(git rev-list HEAD..upstream/main --count)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recent upstream commits:" >> $GITHUB_STEP_SUMMARY
+          git log --oneline -5 upstream/main >> $GITHUB_STEP_SUMMARY
