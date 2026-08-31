@@ -56,11 +56,11 @@ RUN ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-nft && \
     ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-legacy && \
     ln -sf /usr/local/bin/ip6tables /usr/local/bin/ip6tables-legacy
 
-# Download geo data files
+# Download geo data files from v2rayA official repository
 RUN mkdir -p /usr/share/v2raya && \
-    wget -O /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/mzz2017/dist-v2ray-rules-dat/master/geosite.dat && \
-    wget -O /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/mzz2017/dist-v2ray-rules-dat/master/geoip.dat && \
-    wget -O /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/mzz2017/dist-v2ray-rules-dat/master/geosite.dat
+    wget -O /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
+    wget -O /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
+    wget -O /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat
 
 EXPOSE 2017
 VOLUME /etc/v2raya
