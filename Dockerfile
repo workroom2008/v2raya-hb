@@ -24,29 +24,31 @@ COPY service/ ./
 COPY --from=frontend /build/web ./server/router/web
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -tags "with_gvisor" \
-    -ldflags "-X github.com/v2rayA/v2rayA/conf.Version=2.4.10 -s -w" \
+    -ldflags "-X github.com/v2rayA/v2rayA/conf.Version=2.4.16 -s -w" \
     -o /v2raya
 
-# Stage 3: Build v2raya-core (merged xray-core + custom protocols)
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS core
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
-WORKDIR /build/core
-COPY core/go.mod core/go.sum ./
-RUN go mod download
-COPY core/ ./
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath \
-    -ldflags "-X main.Version=2.4.10 -s -w" \
-    -o /v2raya_core ./main
-
-# Stage 4: Final image
+# Stage 3: Final image
 FROM alpine:latest
-RUN apk add --no-cache iptables iptables-legacy nftables tzdata
 
-# Copy binaries from builder stages
+# Install dependencies
+RUN apk add --no-cache iptables iptables-legacy nftables tzdata wget
+
+# Copy v2raya binary from backend stage
 COPY --from=backend /v2raya /usr/bin/v2raya
-COPY --from=core /v2raya_core /usr/bin/v2raya_core
+
+# Download v2raya_core from official v2rayA releases
+ARG TARGETARCH=amd64
+RUN V2RAYA_VERSION="2.4.16" && \
+    case "${TARGETARCH}" in \
+      amd64)  V2RAYA_ARCH="x64" ;; \
+      arm64)  V2RAYA_ARCH="arm64" ;; \
+      arm/v7) V2RAYA_ARCH="armv7" ;; \
+      riscv64) V2RAYA_ARCH="riscv64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    wget -O /usr/bin/v2raya_core \
+      "https://github.com/v2rayA/v2rayA/releases/download/v${V2RAYA_VERSION}/v2raya_core_linux_${V2RAYA_ARCH}_${V2RAYA_VERSION}" && \
+    chmod +x /usr/bin/v2raya_core
 
 # Copy iptables helper scripts
 COPY install/docker/iptables.sh /usr/local/bin/iptables
