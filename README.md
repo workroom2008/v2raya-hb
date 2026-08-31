@@ -26,6 +26,50 @@ v2rayA mainly provides the following methods of installation:
 
 See [**v2rayA - Docs**](https://v2raya.org/en/docs/prologue/introduction/)
 
+## Docker 部署
+
+本项目提供自动构建的 Docker 镜像，发布到 GitHub Container Registry (GHCR)。
+
+### 快速开始
+
+```bash
+docker pull ghcr.io/workroom2008/v2raya-hb:latest
+docker run -d \
+  --name v2raya \
+  --privileged \
+  --network host \
+  -v /path/to/config:/etc/v2raya \
+  ghcr.io/workroom2008/v2raya-hb:latest
+```
+
+### Docker Compose 部署（推荐）
+
+将 `docker-compose.yml` 复制到你的部署目录，然后执行：
+
+```bash
+docker-compose up -d
+```
+
+**注意：** 请修改 `docker-compose.yml` 中的 `volumes` 路径为你实际的配置文件存储路径。
+
+### 配置说明
+
+| 参数 | 说明 |
+|------|------|
+| `image` | Docker 镜像地址 |
+| `privileged` | 特权模式，必须开启 |
+| `network_mode` | 网络模式，推荐使用 `host` |
+| `volumes` | 配置文件挂载路径 |
+| `restart` | 重启策略 |
+
+### 端口说明（bridge 模式）
+
+| 端口 | 协议 | 用途 |
+|------|------|------|
+| 2017 | TCP | WebUI 管理界面 |
+| 20170 | TCP | SOCKS5 代理 |
+| 20171 | TCP | HTTP 代理 |
+| 20172 | TCP | HTTPS 代理 |
 
 ## Screenshot
 
