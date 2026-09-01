@@ -214,7 +214,7 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 			Port:     ci.Port,
 			Protocol: ci.Protocol,
 			Listen:   listenAddrForCustom,
-			Tag:      ci.Tag,
+			Tag:      "custom-" + ci.Tag,
 		}
 		if ci.Protocol == "socks" {
 			ib.Settings = &coreObj.InboundSettings{UDP: true}
@@ -233,18 +233,19 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 
 		// Generate per-inbound routing rules based on the bound outbound group
 		if ci.Outbound != "" && ci.OutboundType != "" {
+			customTag := "custom-" + ci.Tag
 			switch ci.OutboundType {
 			case "direct":
 				// Direct single outbound: route all traffic from this inbound to the bound outbound group
 				t.Routing.Rules = append(t.Routing.Rules, coreObj.RoutingRule{
 					Type:        "field",
 					OutboundTag: ci.Outbound,
-					InboundTag:  []string{ci.Tag},
+					InboundTag:  []string{customTag},
 				})
 			case "routingA":
 				// RoutingA rules: parse and apply with InboundTag filter
 				if ci.RoutingARules != "" {
-					rules, err := parseRoutingARules(ci.RoutingARules, ci.Tag)
+					rules, err := parseRoutingARules(ci.RoutingARules, customTag)
 					if err != nil {
 						log.Warn("setInbound: failed to parse RoutingA rules for inbound %s: %v", ci.Tag, err)
 					} else {
@@ -298,6 +299,12 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 		enableSniffingRouteOnly := configure.GetSettingNotNil().RouteOnly
 		domainsExcluded := splitNonEmptyLines(configure.GetDomainsExcluded())
 		for i := len(t.Inbounds) - 1; i >= 0; i-- {
+			// Skip custom inbounds - they should not have sniffing enabled
+			// as it causes connection delays and instability
+			if strings.HasPrefix(t.Inbounds[i].Tag, "custom-") {
+				t.Inbounds[i].Sniffing.Enabled = false
+				continue
+			}
 			if setting.InboundSniffing == configure.InboundSniffingHttpTLS {
 				t.Inbounds[i].Sniffing.DestOverride = []string{"http", "tls"}
 			} else {
