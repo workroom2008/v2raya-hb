@@ -4,7 +4,10 @@ on:
   schedule:
     # 每天 UTC 02:00 自动检查上游更新（北京时间 10:00）
     - cron: '0 2 * * *'
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   sync:
@@ -13,57 +16,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add upstream remote
+      - name: Sync upstream
         run: |
-          if ! git remote get-url upstream > /dev/null 2>&1; then
-            git remote add upstream https://github.com/v2rayA/v2rayA.git
+          git config user.name "sync-bot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/v2rayA/v2rayA.git || true
+          git fetch upstream --tags --force --quiet
+
+          LOCAL=$(git rev-parse main)
+          UPSTREAM=$(git rev-parse upstream/main)
+
+          if [ "$LOCAL" = "$UPSTREAM" ]; then
+            echo "✅ 已是最新，无需同步"
+            exit 0
           fi
 
-      - name: Fetch upstream
-        run: git fetch upstream
+          git rebase upstream/main
+          git push origin main --force-with-lease
+          echo "🎉 已同步上游更新"
 
-      - name: Check for new commits
-        id: check
-        run: |
-          LOCAL_MAIN=$(git rev-parse origin/main)
-          UPSTREAM_MAIN=$(git rev-parse upstream/main)
-          
-          if [ "$LOCAL_MAIN" = "$UPSTREAM_MAIN" ]; then
-            echo "up_to_date=true" >> $GITHUB_OUTPUT
-            echo "Already up to date with upstream."
-          else
-            echo "up_to_date=false" >> $GITHUB_OUTPUT
-            COMMITS_BEHIND=$(git rev-list origin/main..upstream/main --count)
-            echo "Commits behind: $COMMITS_BEHIND"
-          fi
-
-      - name: Merge upstream changes
-        if: steps.check.outputs.up_to_date == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git checkout main
-          git merge upstream/main --no-edit || {
-            echo "Merge conflict detected!"
-            git merge --abort
-            exit 1
-          }
-
-      - name: Push changes
-        if: steps.check.outputs.up_to_date == 'false'
-        run: git push origin main
-
-      - name: Create sync summary
-        if: steps.check.outputs.up_to_date == 'false'
-        run: |
-          echo "## Upstream Sync Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Synced at:** $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Upstream commits merged:** $(git rev-list origin/main..upstream/main --count)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Recent upstream commits:" >> $GITHUB_STEP_SUMMARY
-          git log --oneline -5 upstream/main >> $GITHUB_STEP_SUMMARY
+      # 同步后触发 Docker 构建，确保镜像版本与代码一致
+      - name: 触发 Docker 构建
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run "Build and Push Docker Image" --ref main
