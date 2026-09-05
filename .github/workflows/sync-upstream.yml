@@ -37,7 +37,19 @@ jobs:
             exit 0
           fi
 
+          # 记录 rebase 前的 commit，用于恢复我们自己的 CI workflows
+          BEFORE_REBASE=$(git rev-parse main)
+
           git rebase upstream/main
+
+          # 恢复我们自己的 CI workflows（上游的 workflow 文件不适合 fork）
+          git checkout $BEFORE_REBASE -- .github/workflows/
+          # 删除上游新增但我们不需要的工作流文件（rebase 可能引入）
+          rm -f .github/workflows/_build_windows_installer.yml
+          # 如果有其他不需要的上游工作流，在这里也删除
+          git add .github/workflows/
+          git diff --cached --quiet || git commit -m "chore: keep our CI workflows"
+
           git push origin main --force-with-lease
           echo "🎉 已同步上游更新"
           echo "synced=true" >> $GITHUB_OUTPUT
