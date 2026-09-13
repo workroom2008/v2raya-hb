@@ -54,9 +54,33 @@ jobs:
           echo "🎉 已同步上游更新"
           echo "synced=true" >> $GITHUB_OUTPUT
 
-      # 有更新时才触发 Docker 构建
-      - name: 触发 Docker 构建
-        if: steps.sync.outputs.synced == 'true'
+      # 检查上游是否发布了新版本（决定是否构建）
+      - name: 检查上游版本
+        id: ver
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run "Build and Push Docker Image" --ref main --repo workroom2008/v2raya-hb
+        run: |
+          LATEST=$(gh api repos/v2rayA/v2rayA/releases/latest --jq .tag_name)
+          MARK="built-$LATEST"
+          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "mark=$MARK" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$MARK" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "✅ $LATEST 已构建过，跳过"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "🆕 发现新版本 $LATEST"
+          fi
+
+      # 只有上游发布新版本时才打标记 tag 并触发构建
+      - name: 打构建标记 tag
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          git tag "${{ steps.ver.outputs.mark }}"
+          git push origin "${{ steps.ver.outputs.mark }}"
+
+      - name: 触发 Docker 构建
+        if: steps.ver.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docker-publish.yml --ref main --repo workroom2008/v2raya-hb
