@@ -1,8 +1,7 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches: [main]
+  # 只在 v2rayA 发布新版本时构建：由 sync-upstream.yml 检测上游 release 后手动触发
   workflow_dispatch:
 
 jobs:
