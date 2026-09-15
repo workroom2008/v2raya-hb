@@ -769,7 +769,7 @@ a {
 }
 
 .modal-custom-ports {
-  z-index: 999;
+  z-index: 39;
 }
 
 /* Keep App-level login modal above any other modal overlays. */
