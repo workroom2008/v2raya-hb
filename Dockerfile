@@ -61,10 +61,15 @@ RUN ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-nft && \
     ln -sf /usr/local/bin/ip6tables /usr/local/bin/ip6tables-legacy
 
 RUN mkdir -p /usr/share/v2raya && \
+    apk add --no-cache jq >/dev/null && \
     curl -fsSL -o /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
     curl -fsSL -o /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
     curl -fsSL -o /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
-    touch -m -d "@0" /usr/share/v2raya/*.dat
+    GFWLIST_TAG=$(wget -qO- https://api.github.com/repos/v2rayA/dist-v2ray-rules-dat/tags | jq -r '.[0].name') && \
+    GFWLIST_DATE=$(echo "$GFWLIST_TAG" | sed -E 's/^([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})$/\1-\2-\3 \4:\5/') && \
+    echo "geo data tag: ${GFWLIST_TAG} (${GFWLIST_DATE} UTC)" && \
+    date -u -d "${GFWLIST_DATE}" "+%s" >/dev/null && \
+    touch -m -d "${GFWLIST_DATE} +0000" /usr/share/v2raya/*.dat
 
 EXPOSE 2017
 VOLUME /etc/v2raya
