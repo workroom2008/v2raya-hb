@@ -543,6 +543,7 @@ export default {
         component: ModalSetting,
         hasModalCard: true,
         canCancel: true,
+        customClass: "app-setting-modal",
         events: {
           clickPorts() {
             that.showCustomPorts = true;
@@ -770,6 +771,11 @@ a {
 
 .modal-custom-ports {
   z-index: 40;
+}
+
+/* 设置弹窗在 body 里追加在常驻的地址与端口弹窗之后，压低层级后者才能盖住它 */
+.app-setting-modal {
+  z-index: 39;
 }
 
 /* Keep App-level login modal above any other modal overlays. */
