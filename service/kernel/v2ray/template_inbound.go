@@ -206,6 +206,7 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 	if t.Setting != nil && t.Setting.PortSharing {
 		listenAddrForCustom = "0.0.0.0"
 	}
+	customTags := make(map[string]bool)
 	for _, ci := range configure.GetCustomInbounds() {
 		if ci.Port <= 0 || (ci.Protocol != "socks" && ci.Protocol != "http") {
 			continue
@@ -229,6 +230,7 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 				{User: ci.Username, Pass: ci.Password},
 			}
 		}
+		customTags[ci.Tag] = true
 		t.Inbounds = append(t.Inbounds, ib)
 
 		// Generate per-inbound routing rules based on the bound outbound group
@@ -297,8 +299,14 @@ func (t *Template) setInbound(setting *configure.Setting) error {
 	if setting.InboundSniffing != configure.InboundSniffingDisable && setting.InboundSniffing != "" {
 		enableSniffingRouteOnly := configure.GetSettingNotNil().RouteOnly
 		domainsExcluded := splitNonEmptyLines(configure.GetDomainsExcluded())
-		for i := len(t.Inbounds) - 1; i >= 0; i-- {
-			if setting.InboundSniffing == configure.InboundSniffingHttpTLS {
+	for i := len(t.Inbounds) - 1; i >= 0; i-- {
+		// Skip custom inbounds - sniffing waits for TLS/HTTP payloads before routing,
+		// which delays the first connection through SOCKS/HTTP custom inbounds
+		if customTags[t.Inbounds[i].Tag] {
+			t.Inbounds[i].Sniffing.Enabled = false
+			continue
+		}
+		if setting.InboundSniffing == configure.InboundSniffingHttpTLS {
 				t.Inbounds[i].Sniffing.DestOverride = []string{"http", "tls"}
 			} else {
 				t.Inbounds[i].Sniffing.DestOverride = []string{"http", "tls", "quic"}
