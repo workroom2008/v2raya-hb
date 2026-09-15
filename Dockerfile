@@ -20,9 +20,11 @@ COPY service/go.mod service/go.sum ./
 RUN go mod download
 COPY service/ ./
 COPY --from=frontend /build/web ./server/router/web
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+RUN V2RAYA_VERSION=$(wget -qO- https://api.github.com/repos/v2rayA/v2rayA/releases/latest | sed -n 's/.*"tag_name": *"v\(.*\)".*/\1/p' | head -n1) && \
+    echo "Building with version ${V2RAYA_VERSION}" && \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -tags "with_gvisor" \
-    -ldflags "-X github.com/v2rayA/v2rayA/conf.Version=2.4.16 -s -w" \
+    -ldflags "-X github.com/v2rayA/v2rayA/conf.Version=${V2RAYA_VERSION} -s -w" \
     -o /v2raya
 
 # Stage 3: Final image
@@ -35,8 +37,9 @@ COPY --from=backend /v2raya /usr/bin/v2raya
 # Download v2raya_core from official v2rayA releases
 # TARGETARCH is automatically available from BuildKit
 ARG TARGETARCH
-RUN echo "Target arch: ${TARGETARCH}" && \
-    V2RAYA_VERSION="2.4.16" && \
+RUN apk add --no-cache wget jq >/dev/null  \
+    && V2RAYA_VERSION=$(wget -qO- https://api.github.com/repos/v2rayA/v2rayA/releases/latest | jq -r .tag_name | sed 's/^v//') && \
+    echo "Target arch: ${TARGETARCH}, core version: ${V2RAYA_VERSION}" && \
     case "${TARGETARCH}" in \
       amd64)  V2RAYA_ARCH="x64" ;; \
       arm64)  V2RAYA_ARCH="arm64" ;; \
@@ -48,7 +51,7 @@ RUN echo "Target arch: ${TARGETARCH}" && \
     curl -fsSL -o /usr/bin/v2raya_core \
       "https://github.com/v2rayA/v2rayA/releases/download/v${V2RAYA_VERSION}/v2raya_core_linux_${V2RAYA_ARCH}_${V2RAYA_VERSION}" && \
     chmod +x /usr/bin/v2raya_core && \
-    echo "v2raya_core downloaded successfully"
+    echo "v2raya_core ${V2RAYA_VERSION} downloaded successfully"
 
 COPY install/docker/iptables.sh /usr/local/bin/iptables
 COPY install/docker/ip6tables.sh /usr/local/bin/ip6tables
