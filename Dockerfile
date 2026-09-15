@@ -63,7 +63,8 @@ RUN ln -sf /usr/local/bin/iptables /usr/local/bin/iptables-nft && \
 RUN mkdir -p /usr/share/v2raya && \
     curl -fsSL -o /usr/share/v2raya/geosite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
     curl -fsSL -o /usr/share/v2raya/geoip.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geoip.dat && \
-    curl -fsSL -o /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat
+    curl -fsSL -o /usr/share/v2raya/LoyalsoldierSite.dat https://raw.githubusercontent.com/v2rayA/dist-v2ray-rules-dat/master/geosite.dat && \
+    touch -m -d "@0" /usr/share/v2raya/*.dat
 
 EXPOSE 2017
 VOLUME /etc/v2raya
