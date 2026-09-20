@@ -59,7 +59,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST=$(gh api repos/v2rayA/v2rayA/releases/latest --jq .tag_name)
+          # 取最新 release（含 pre-release），按发布时间排序取第一个
+          LATEST=$(gh api "repos/v2rayA/v2rayA/releases?per_page=30" --jq '[.[] | select(.draft == false)][0].tag_name')
           MARK="built-$LATEST"
           echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
           echo "mark=$MARK" >> "$GITHUB_OUTPUT"
