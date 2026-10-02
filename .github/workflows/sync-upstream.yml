@@ -1,0 +1,86 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # 每天 UTC 02:00 自动检查上游更新（北京时间 10:00）
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync upstream
+        id: sync
+        run: |
+          git config user.name "sync-bot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/v2rayA/v2rayA.git || true
+          git fetch upstream --tags --force --quiet
+
+          UPSTREAM=$(git rev-parse upstream/main)
+
+          # 上游 HEAD 已包含在 main 历史中 = 上游无新提交
+          if git merge-base --is-ancestor "$UPSTREAM" main; then
+            echo "✅ 已是最新，无需同步"
+            echo "synced=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 源码零改动，以上游为准：硬重置到上游，再恢复我们自己的文件（永不冲突）
+          BEFORE_REBASE=$(git rev-parse main)
+
+          git reset --hard upstream/main
+
+          # 恢复我们自己的文件
+          git checkout $BEFORE_REBASE -- Dockerfile docker-compose.yml .dockerignore .gitignore || true
+          rm -rf .github/workflows
+          git checkout $BEFORE_REBASE -- .github/workflows/
+          git add -A Dockerfile docker-compose.yml .dockerignore .gitignore .github/workflows/
+          git diff --cached --quiet || git commit -m "chore: keep our Docker/CI files"
+
+          git push origin main --force-with-lease
+          echo "🎉 已同步上游更新"
+          echo "synced=true" >> $GITHUB_OUTPUT
+
+      # 检查上游是否发布了新版本（决定是否构建）
+      - name: 检查上游版本
+        id: ver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 取最新 release（含 pre-release），按发布时间排序取第一个
+          LATEST=$(gh api "repos/v2rayA/v2rayA/releases?per_page=30" --jq '[.[] | select(.draft == false)][0].tag_name')
+          MARK="built-$LATEST"
+          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "mark=$MARK" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$MARK" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "✅ $LATEST 已构建过，跳过"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "🆕 发现新版本 $LATEST"
+          fi
+
+      # 只有上游发布新版本时才打标记 tag 并触发构建
+      - name: 打构建标记 tag
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          git tag "${{ steps.ver.outputs.mark }}"
+          git push origin "${{ steps.ver.outputs.mark }}"
+
+      - name: 触发 Docker 构建
+        if: steps.ver.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docker-publish.yml --ref main --repo workroom2008/v2raya-hb
