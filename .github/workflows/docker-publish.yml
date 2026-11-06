@@ -8,7 +8,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     
     steps:
@@ -50,6 +50,7 @@ jobs:
         run: |
           LATEST=$(gh api "repos/v2rayA/v2rayA/releases?per_page=30" --jq '[.[] | select(.draft == false)][0].tag_name')
           echo "version=$LATEST" >> $GITHUB_OUTPUT
+          echo "mark=built-$LATEST" >> $GITHUB_OUTPUT
           echo "Upstream latest: $LATEST"
 
       - name: Build and push
@@ -79,3 +80,11 @@ jobs:
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "docker pull ghcr.io/${{ steps.repo_owner.outputs.LOWERCASE_REPOSITORY_OWNER }}/v2raya-hb:latest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # 构建成功才打标记，失败时 sync 次日会重新触发
+      - name: Mark version as built
+        run: |
+          git config user.name "sync-bot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.ver.outputs.mark }}"
+          git push origin "refs/tags/${{ steps.ver.outputs.mark }}"

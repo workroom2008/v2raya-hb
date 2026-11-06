@@ -80,9 +80,9 @@ jobs:
             echo "🆕 发现新版本 $LATEST"
           fi
 
-      # 只有上游发布新版本时才打标记 tag（自动构建已停用，不再触发）
-      - name: 打构建标记 tag
+      # 上游发布新版本才构建；标记 tag 由构建成功后再打，失败可重试
+      - name: 触发镜像构建
         if: steps.ver.outputs.new == 'true'
-        run: |
-          git tag "${{ steps.ver.outputs.mark }}"
-          git push origin "${{ steps.ver.outputs.mark }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docker-publish.yml --repo "$GITHUB_REPOSITORY" --ref main
